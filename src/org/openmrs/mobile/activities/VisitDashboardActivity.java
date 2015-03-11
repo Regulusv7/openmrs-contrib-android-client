@@ -17,7 +17,6 @@ package org.openmrs.mobile.activities;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Handler;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -45,7 +44,7 @@ import org.openmrs.mobile.utilities.ToastUtil;
 
 import java.util.List;
 
-public class VisitDashboardActivity extends ACBaseActivity implements VisitsManager.VisitManagerListener, FormsManger.FormManagerListener {
+public class VisitDashboardActivity extends ACBaseActivity implements VisitsManager.UpdateVisitEncountersCallback, FormsManger.FormManagerListener {
 
     public static final int CAPTURE_VITALS_REQUEST_CODE = 1;
     private ExpandableListView mExpandableListView;
@@ -127,7 +126,7 @@ public class VisitDashboardActivity extends ACBaseActivity implements VisitsMana
         mSelectedPatientUUID = patientUUID;
         try {
             Intent intent = new Intent(this, FormEntryActivity.class);
-            Uri formURI = new FormsDAO(this.getContentResolver()).getFormURI("8");
+            Uri formURI = new FormsDAO(this.getContentResolver()).getFormURI(ApplicationConstants.FormNames.VITALS_XFORM);
             intent.setData(formURI);
             intent.putExtra(ApplicationConstants.BundleKeys.PATIENT_UUID_BUNDLE, mSelectedPatientUUID);
             intent.putExtra(ApplicationConstants.BundleKeys.VISIT_ID, mVisit.getId());

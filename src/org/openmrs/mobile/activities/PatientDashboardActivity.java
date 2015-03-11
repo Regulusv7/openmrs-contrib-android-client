@@ -40,7 +40,6 @@ import org.openmrs.mobile.application.OpenMRS;
 import org.openmrs.mobile.dao.PatientDAO;
 import org.openmrs.mobile.dao.VisitDAO;
 import org.openmrs.mobile.models.Patient;
-import org.openmrs.mobile.models.Visit;
 import org.openmrs.mobile.models.mappers.VisitMapper;
 import org.openmrs.mobile.net.FindPatientsManager;
 import org.openmrs.mobile.net.VisitsManager;
@@ -338,26 +337,22 @@ public class PatientDashboardActivity extends ACBaseActivity implements ActionBa
     }
 
     public CreateVisitCallbackListener getCreateVisitCallbackListener() {
-        return new CreateVisitCallbackListener(PatientDashboardActivity.this, mPatient.getId(), System.currentTimeMillis())
-        ;
+        return new CreateVisitCallbackListener(PatientDashboardActivity.this, mPatient.getId());
     }
 
     public final class CreateVisitCallbackListener implements Response.Listener<JSONObject> {
         private long mPatientID;
         private WeakReference<PatientDashboardActivity> patientDashboardActivityWeakReference;
-        private long mStartDate;
 
-        public CreateVisitCallbackListener(PatientDashboardActivity pda, long patientID, long startDate) {
+        public CreateVisitCallbackListener(PatientDashboardActivity pda, long patientID) {
             patientDashboardActivityWeakReference = new WeakReference<PatientDashboardActivity>(pda);
             mPatientID = patientID;
-            mStartDate = startDate;
         }
 
         @Override
         public void onResponse(JSONObject response) {
             try {
-                Visit visit = VisitMapper.map(response);
-                long visitID = new VisitDAO().saveVisit(visit, mPatientID, mStartDate);
+                long visitID = new VisitDAO().saveVisit(VisitMapper.map(response), mPatientID);
                 patientDashboardActivityWeakReference.get().visitStarted(visitID, visitID <= 0);
             } catch (JSONException e) {
                 OpenMRS.getInstance().getOpenMRSLogger().d(e.toString());

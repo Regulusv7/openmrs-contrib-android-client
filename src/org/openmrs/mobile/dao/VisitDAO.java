@@ -33,10 +33,12 @@ import java.util.List;
 
 public class VisitDAO {
 
-    public long saveVisit(Visit visit, long patientID, long startDate) {
+    public static final String ORDER_DESC = " DESC";
+    public static final String ORDER_ASC = " ASC";
+
+    public long saveVisit(Visit visit, long patientID) {
         EncounterDAO encounterDAO = new EncounterDAO();
         ObservationDAO observationDAO = new ObservationDAO();
-        visit.setStartDate(startDate);
         visit.setPatientID(patientID);
         long visitID = new VisitTable().insert(visit);
         for (Encounter encounter : visit.getEncounters()) {
@@ -88,7 +90,7 @@ public class VisitDAO {
 
         DBOpenHelper helper = OpenMRSDBOpenHelper.getInstance().getDBOpenHelper();
 
-        String sort = VisitTable.Column.PATIENT_KEY_ID + " ASC";
+        String sort = VisitTable.Column.PATIENT_KEY_ID + ORDER_ASC;
         String visitWhere = String.format("%s IS NULL OR %s = ''", VisitTable.Column.STOP_DATE, VisitTable.Column.STOP_DATE);
         final Cursor visitCursor = helper.getReadableDatabase().query(VisitTable.TABLE_NAME, null, visitWhere, null, null, null, sort);
 
@@ -139,7 +141,7 @@ public class VisitDAO {
 
         String where = String.format("%s = ?", VisitTable.Column.PATIENT_KEY_ID);
         String[] whereArgs = new String[]{patientID.toString()};
-        String orderBy = VisitTable.Column.START_DATE + " DESC";
+        String orderBy = VisitTable.Column.START_DATE + ORDER_DESC;
 
         final Cursor cursor = helper.getReadableDatabase().query(VisitTable.TABLE_NAME, null, where, whereArgs, null, null, orderBy);
         if (null != cursor) {
@@ -174,7 +176,7 @@ public class VisitDAO {
 
         String where = String.format("%s = ?", VisitTable.Column.ID);
         String[] whereArgs = new String[]{visitID.toString()};
-        String orderBy = VisitTable.Column.START_DATE + " DESC";
+        String orderBy = VisitTable.Column.START_DATE + ORDER_DESC;
 
         final Cursor cursor = helper.getReadableDatabase().query(VisitTable.TABLE_NAME, null, where, whereArgs, null, null, orderBy);
         if (null != cursor) {
@@ -229,7 +231,7 @@ public class VisitDAO {
         DBOpenHelper helper = OpenMRSDBOpenHelper.getInstance().getDBOpenHelper();
         String where = String.format("%s = ? AND %s IS NULL OR %s = ''", VisitTable.Column.PATIENT_KEY_ID, VisitTable.Column.STOP_DATE, VisitTable.Column.STOP_DATE);
         String[] whereArgs = new String[]{patientID.toString()};
-        String orderBy = VisitTable.Column.START_DATE + " DESC";
+        String orderBy = VisitTable.Column.START_DATE + ORDER_DESC;
 
         final Cursor cursor = helper.getReadableDatabase().query(VisitTable.TABLE_NAME, null, where, whereArgs, null, null, orderBy);
 
@@ -254,5 +256,30 @@ public class VisitDAO {
             }
         }
         return visit;
+    }
+
+    public boolean shouldStartNewVisit(final long patientID) {
+        return !checkForPatientActiveVisits(patientID);
+    }
+
+    public boolean checkForPatientActiveVisits(final Long patientID) {
+        boolean hasVisit = false;
+        DBOpenHelper helper = OpenMRSDBOpenHelper.getInstance().getDBOpenHelper();
+        String where = String.format("%s = ? AND %s IS NULL OR %s = ''", VisitTable.Column.PATIENT_KEY_ID, VisitTable.Column.STOP_DATE, VisitTable.Column.STOP_DATE);
+        String[] whereArgs = new String[]{patientID.toString()};
+        String orderBy = VisitTable.Column.START_DATE + ORDER_DESC;
+
+        final Cursor cursor = helper.getReadableDatabase().query(VisitTable.TABLE_NAME, null, where, whereArgs, null, null, orderBy);
+
+        if (null != cursor) {
+            try {
+                if (cursor.moveToFirst()) {
+                    hasVisit = true;
+                }
+            } finally {
+                cursor.close();
+            }
+        }
+        return hasVisit;
     }
 }

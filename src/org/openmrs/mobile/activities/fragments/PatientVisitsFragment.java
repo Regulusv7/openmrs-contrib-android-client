@@ -93,7 +93,7 @@ public class PatientVisitsFragment extends ACBaseFragment {
     public void startVisit() {
         ((PatientDashboardActivity) getActivity())
                 .showProgressDialog(R.string.action_start_visit, PatientDashboardActivity.DialogAction.ADD_VISIT);
-        mVisitsManager.createVisit(mPatient, createVisitCallbackListener);
+        mVisitsManager.createVisit(mPatient.getUuid(), createVisitCallbackListener);
     }
 
     private void showStartVisitDialog() {

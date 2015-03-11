@@ -53,7 +53,6 @@ public class JsonObjectRequestWrapper extends JsonObjectRequest {
         builder.append("=");
         builder.append(OpenMRS.getInstance().getSessionToken());
         params.put(ApplicationConstants.COOKIE_PARAM, builder.toString());
-
         return params;
     }
 

@@ -88,7 +88,7 @@ public class PatientHierarchyAdapter extends ArrayAdapter<Patient> {
             @Override
             public void onClick(View v) {
                 if (mContext instanceof CaptureVitalsActivity) {
-                    ((CaptureVitalsActivity) mContext).startSomething(mItems.get(position).getUuid());
+                    ((CaptureVitalsActivity) mContext).startFormEntryForResult(mItems.get(position).getId(), mItems.get(position).getUuid());
                 } else {
                     throw new IllegalStateException("Current context is not an instance of CaptureVitalsActivity.class");
                 }

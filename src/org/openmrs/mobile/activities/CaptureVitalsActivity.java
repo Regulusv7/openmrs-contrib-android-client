@@ -17,7 +17,6 @@ package org.openmrs.mobile.activities;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Handler;
 import android.view.Menu;
 
 import com.android.volley.Response;
@@ -32,12 +31,10 @@ import org.openmrs.mobile.dao.FormsDAO;
 import org.openmrs.mobile.dao.PatientDAO;
 import org.openmrs.mobile.dao.VisitDAO;
 import org.openmrs.mobile.models.Patient;
-import org.openmrs.mobile.models.Visit;
 import org.openmrs.mobile.models.mappers.VisitMapper;
 import org.openmrs.mobile.net.FormsManger;
 import org.openmrs.mobile.net.VisitsManager;
 import org.openmrs.mobile.utilities.ApplicationConstants;
-import org.openmrs.mobile.utilities.DateUtils;
 import org.openmrs.mobile.utilities.ToastUtil;
 
 import java.util.List;
@@ -47,12 +44,7 @@ public class CaptureVitalsActivity extends ACBaseActivity implements FormsManger
     public static final int CAPTURE_VITALS_REQUEST_CODE = 1;
 
     private String mSelectedPatientUUID;
-    private long mVisitID;
     private VisitsManager mVisitsManager;
-    private final long wait = 7000;
-    private String currentDate = DateUtils.convertTime(System.currentTimeMillis(), DateUtils.OPEN_MRS_REQUEST_FORMAT);
-    private long curr = System.currentTimeMillis();
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -62,7 +54,6 @@ public class CaptureVitalsActivity extends ACBaseActivity implements FormsManger
 
         if (null != savedInstanceState) {
             mSelectedPatientUUID = savedInstanceState.getString(ApplicationConstants.BundleKeys.PATIENT_UUID_BUNDLE);
-            mVisitID = savedInstanceState.getLong(ApplicationConstants.BundleKeys.VISIT_ID);
         }
 
         List<Patient> patientList = new PatientDAO().getAllPatients();
@@ -76,9 +67,12 @@ public class CaptureVitalsActivity extends ACBaseActivity implements FormsManger
         return false;
     }
 
-    public void startFormEntryForResult(String patientUUID) {
-        currentDate = DateUtils.convertTime(System.currentTimeMillis(), DateUtils.OPEN_MRS_REQUEST_FORMAT);
-        mVisitID = new VisitDAO().getActiveVisitForPatientByPatientID(new PatientDAO().findPatientByUUID(mSelectedPatientUUID).getId()).getId();
+    public void startFormEntryForResult(Long patientId, String patientUUID) {
+        mSelectedPatientUUID = patientUUID;
+        if (new VisitDAO().shouldStartNewVisit(patientId)) {
+            mVisitsManager.createVisit(patientUUID, new CreateVisitCallbackListener(patientId));
+        }
+
         try {
             Intent intent = new Intent(this, FormEntryActivity.class);
             Uri formURI = new FormsDAO(this.getContentResolver()).getFormURI(ApplicationConstants.FormNames.VITALS_XFORM);
@@ -91,25 +85,10 @@ public class CaptureVitalsActivity extends ACBaseActivity implements FormsManger
         }
     }
 
-    public void startSomething(final String patientUUID) {
-        mSelectedPatientUUID = patientUUID;
-        if (new VisitDAO().getActiveVisitForPatientByPatientID(new PatientDAO().findPatientByUUID(mSelectedPatientUUID).getId()) == null) {
-            Patient patient = new PatientDAO().findPatientByUUID(mSelectedPatientUUID);
-            mVisitsManager.createVisit(patient, new CreateVisitCallbackListener(patient.getId(), curr - 6));
-        }
-        new Handler().postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                startFormEntryForResult(patientUUID);
-            }
-        }, wait);
-    }
-
     @Override
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
         outState.putString(ApplicationConstants.BundleKeys.PATIENT_UUID_BUNDLE, mSelectedPatientUUID);
-        outState.putLong(ApplicationConstants.BundleKeys.VISIT_ID, new VisitDAO().getActiveVisitForPatientByPatientID(new PatientDAO().findPatientByUUID(mSelectedPatientUUID).getId()).getId());
     }
 
     @Override
@@ -119,7 +98,7 @@ public class CaptureVitalsActivity extends ACBaseActivity implements FormsManger
             case RESULT_OK:
                 String path = data.getData().toString();
                 final String instanceID = path.substring(path.lastIndexOf('/') + 1);
-                sth(instanceID);
+                uploadXForm(instanceID);
                 finish();
                 break;
             case RESULT_CANCELED:
@@ -129,29 +108,31 @@ public class CaptureVitalsActivity extends ACBaseActivity implements FormsManger
         }
     }
 
-    public void sth(String instanceID) {
-        new FormsManger(this, this).uploadXFormWithMultiPartRequest(new FormsDAO(getContentResolver()).getSurveysSubmissionDataFromFormInstanceId(instanceID).getFormInstanceFilePath(), mSelectedPatientUUID);
-    }
-
     @Override
     public void updateVisitData() {
-        mVisitsManager.findVisitByUUID(new VisitDAO().getActiveVisitForPatientByPatientID(new PatientDAO().findPatientByUUID(mSelectedPatientUUID).getId()).getUuid(), new PatientDAO().findPatientByUUID(mSelectedPatientUUID).getId());
+        Patient patient = new PatientDAO().findPatientByUUID(mSelectedPatientUUID);
+        mVisitsManager.findVisitByUUID(new VisitDAO().getActiveVisitForPatientByPatientID(
+                        patient.getId()).getUuid(),
+                patient.getId());
+    }
+
+    public void uploadXForm(String instanceID) {
+        new FormsManger(this, this).uploadXFormWithMultiPartRequest(
+                new FormsDAO(getContentResolver()).getSurveysSubmissionDataFromFormInstanceId(instanceID)
+                        .getFormInstanceFilePath(), mSelectedPatientUUID);
     }
 
     public static final class CreateVisitCallbackListener implements Response.Listener<JSONObject> {
         private long mPatientID;
-        private long mStartDate;
 
-        public CreateVisitCallbackListener(Long patientID, long startDate) {
+        public CreateVisitCallbackListener(Long patientID) {
             mPatientID = patientID;
-            mStartDate = startDate;
         }
 
         @Override
         public void onResponse(JSONObject response) {
             try {
-                Visit visit = VisitMapper.map(response);
-                new VisitDAO().saveVisit(visit, mPatientID, mStartDate);
+                new VisitDAO().saveVisit(VisitMapper.map(response), mPatientID);
             } catch (JSONException e) {
                 OpenMRS.getInstance().getOpenMRSLogger().d(e.toString());
             }

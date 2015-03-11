@@ -18,6 +18,7 @@ import org.javarosa.core.model.data.DateTimeData;
 import org.javarosa.core.model.data.IAnswerData;
 import org.javarosa.form.api.FormEntryPrompt;
 import org.joda.time.DateTime;
+import org.joda.time.DateTimeFieldType;
 import org.odk.collect.android.application.Collect;
 
 import android.annotation.SuppressLint;
@@ -52,6 +53,8 @@ public class DateTimeWidget extends QuestionWidget {
     private boolean hideMonth = false;
     private boolean showCalendar = false;
 	private HorizontalScrollView scrollView = null;
+
+    int mSeconds;
 
     public DateTimeWidget(Context context, FormEntryPrompt prompt) {
         super(context, prompt);
@@ -247,6 +250,7 @@ public class DateTimeWidget extends QuestionWidget {
             mDateListener);
         mTimePicker.setCurrentHour(ldt.getHourOfDay());
         mTimePicker.setCurrentMinute(ldt.getMinuteOfHour());
+        mSeconds = ldt.get(DateTimeFieldType.secondOfMinute());
     }
 
 
@@ -259,7 +263,7 @@ public class DateTimeWidget extends QuestionWidget {
         DateTime ldt =
             new DateTime(mDatePicker.getYear(), mDatePicker.getMonth() + 1,
                     mDatePicker.getDayOfMonth(), mTimePicker.getCurrentHour(),
-                    mTimePicker.getCurrentMinute(), 0);
+                    mTimePicker.getCurrentMinute(), mSeconds);
         //DateTime utc = ldt.withZone(DateTimeZone.forID("UTC"));
         return new DateTimeData(ldt.toDate());
     }
